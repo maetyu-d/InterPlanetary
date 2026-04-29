@@ -108,6 +108,7 @@ struct Missile {
     MissileState state = MissileState::Inactive;
     float age = 0.0f;
     float blastRadius = 6.0f;
+    int ropeBounces = 0;
 };
 
 struct Explosion {
@@ -137,6 +138,8 @@ struct Player {
     float aimAngleDeg = 42.0f;
     float launchPower = 10.5f;
     float damageFlash = 0.0f;
+    float fuelRegenProgress = 0.0f;
+    float metalRegenProgress = 0.0f;
     MineAction mining{};
 };
 

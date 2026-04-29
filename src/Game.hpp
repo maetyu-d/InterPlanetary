@@ -1,7 +1,7 @@
 #pragma once
 
-#include "raylib.h"
 #include "World.hpp"
+#include "raylib.h"
 
 class Game {
 public:
@@ -36,6 +36,7 @@ private:
     bool spend(Player& player, int fuelCost, int metalCost);
     bool canPlayerStand(const Player& player, const Vec3i& cell) const;
     void updatePassiveResourceRegen(float dt);
+    void generateCollisionResources();
 
     void updateMiningBlocks(float dt);
     void fireMissile(Player& player);
@@ -52,6 +53,7 @@ private:
     std::string predictedImpactText(const Player& player) const;
     std::string contextualCostText(const Player& player) const;
     bool missileHasCollided(const Missile& missile) const;
+    std::optional<Vec3> firstMissileCollisionPoint(const Vec3& from, const Vec3& to) const;
     void updateMissilePhysics(Missile& missile, const Wind& wind, float dt) const;
 
     void drawWorldSlice() const;
@@ -63,6 +65,7 @@ private:
     void drawPreviewArc(const Player& player) const;
     void drawHelp() const;
     void drawPlayerSprite(int playerId, Vector2 center, float height, float alpha = 1.0f) const;
+    void ensureNebulaCache() const;
 
     World world_;
     Player players_[2];
@@ -73,6 +76,9 @@ private:
     std::vector<Explosion> explosions_;
     Texture2D playerSprite_{};
     bool playerSpriteLoaded_ = false;
+    mutable RenderTexture2D nebulaCache_{};
+    mutable int nebulaCacheWidth_ = 0;
+    mutable int nebulaCacheHeight_ = 0;
 
     bool showHelp_ = false;
     bool gameOver_ = false;

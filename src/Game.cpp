@@ -1,4 +1,5 @@
 #include "Game.hpp"
+#include "World.hpp"
 
 #include "raylib.h"
 
@@ -17,18 +18,21 @@ constexpr int kArmourCost = 4;
 constexpr int kSiloCost = 30;
 constexpr int kMissileFuelCost = 15;
 constexpr int kMissileMetalCost = 20;
+constexpr int kBombFuelCost = 8;
+constexpr int kBombMetalCost = 10;
 constexpr float kPassiveFuelRegenSeconds = 6.0f;
 constexpr float kPassiveMetalRegenSeconds = 8.0f;
 constexpr float kExplosionRadius = 3.0f;
 constexpr float kGravityMu = 1550.0f;
-constexpr float kTwinTargetGravityMu = 1180.0f;
-constexpr float kTwinSourceRepelMu = 560.0f;
+constexpr float kTwinBombGravity = 16.0f;
+constexpr float kTwinBombBounceBoost = 1.06f;
+constexpr float kTwinBombMaxSpeed = 18.0f;
 constexpr float kDrag = 0.0025f;
 constexpr float kLaunchClearance = 1.9f;
 constexpr float kLaunchBoostDuration = 0.22f;
 constexpr float kLaunchBoostStrength = 3.8f;
-constexpr float kTwinLaunchBoostDuration = 0.34f;
-constexpr float kTwinLaunchBoostStrength = 5.4f;
+constexpr float kTwinLaunchBoostDuration = 0.18f;
+constexpr float kTwinLaunchBoostStrength = 1.4f;
 constexpr float kMissileWindFactor = 0.08f;
 constexpr int kMissileSubsteps = 8;
 constexpr float kPlanetDriftMaxSpeed = 4.0f;
@@ -45,7 +49,18 @@ int gPlanetCount = 1;
 std::array<PlanetRegion, 2> gPlanetRegions{};
 std::array<PlanetStyle, 2> gPlanetStyles{};
 std::array<Vector2, 2> gPlanetDriftOffsets{{{0.0f, 0.0f}, {0.0f, 0.0f}}};
+std::array<Vector2, 2> gPlanetVisualOffsets{{{0.0f, 0.0f}, {0.0f, 0.0f}}};
 std::array<Vector2, 2> gPlanetDriftVelocities{{{0.0f, 0.0f}, {0.0f, 0.0f}}};
+bool gTwinPlanetCollisionTriggered = false;
+float gTwinPlanetCollisionCooldown = 0.0f;
+
+int currentFuelLaunchCost() {
+    return gTwinPlanets ? kBombFuelCost : kMissileFuelCost;
+}
+
+int currentMetalLaunchCost() {
+    return gTwinPlanets ? kBombMetalCost : kMissileMetalCost;
+}
 
 Color scaleColor(Color c, float scale, float alphaScale = 1.0f) {
     return {
@@ -166,6 +181,21 @@ Rectangle worldViewRect() {
     return {x, y, side, side};
 }
 
+Rectangle twinPlanetRingBounds() {
+    Rectangle bounds = worldViewRect();
+    if (!gTwinPlanets) {
+        return bounds;
+    }
+    float expandX = bounds.width * 0.25f;
+    float expandY = bounds.height * 0.125f;
+    return {
+        bounds.x - expandX,
+        bounds.y - expandY,
+        bounds.width + expandX * 2.0f,
+        bounds.height + expandY * 2.0f
+    };
+}
+
 float worldCellSize();
 Rectangle activePlanetRect();
 
@@ -242,8 +272,8 @@ Rectangle screenRectForPlanet(const PlanetRegion& region) {
             gPlanetRegions[planetIndex].maxX == region.maxX &&
             gPlanetRegions[planetIndex].minY == region.minY &&
             gPlanetRegions[planetIndex].maxY == region.maxY) {
-            rect.x += std::round(gPlanetDriftOffsets[planetIndex].x);
-            rect.y += std::round(gPlanetDriftOffsets[planetIndex].y);
+            rect.x += gPlanetVisualOffsets[planetIndex].x;
+            rect.y += gPlanetVisualOffsets[planetIndex].y;
             break;
         }
     }
@@ -274,7 +304,7 @@ Vector2 driftOffsetForWorldPoint(const Vec3& p) {
     if (!gTwinPlanets) {
         return {0.0f, 0.0f};
     }
-    return gPlanetDriftOffsets[nearestPlanetIndexForPoint(p)];
+    return gPlanetVisualOffsets[nearestPlanetIndexForPoint(p)];
 }
 
 Vector2 snappedDriftOffsetForWorldPoint(const Vec3& p) {
@@ -317,7 +347,9 @@ void updateTwinPlanetDrift(float dt, const Wind& wind) {
         return;
     }
 
-    Rectangle bounds = worldViewRect();
+    gTwinPlanetCollisionCooldown = std::max(0.0f, gTwinPlanetCollisionCooldown - dt);
+
+    Rectangle bounds = twinPlanetRingBounds();
     for (int i = 0; i < gPlanetCount; ++i) {
         Vector2 windPush{
             wind.direction.x * wind.strength * 0.035f,
@@ -363,6 +395,12 @@ void updateTwinPlanetDrift(float dt, const Wind& wind) {
         }
     }
 
+    float smoothFactor = clampf(dt * 5.5f, 0.0f, 1.0f);
+    for (int i = 0; i < gPlanetCount; ++i) {
+        gPlanetVisualOffsets[i].x += (gPlanetDriftOffsets[i].x - gPlanetVisualOffsets[i].x) * smoothFactor;
+        gPlanetVisualOffsets[i].y += (gPlanetDriftOffsets[i].y - gPlanetVisualOffsets[i].y) * smoothFactor;
+    }
+
     Rectangle rect0 = screenRectForPlanet(gPlanetRegions[0]);
     Rectangle rect1 = screenRectForPlanet(gPlanetRegions[1]);
     Rectangle expanded0{rect0.x - 2.0f, rect0.y - 2.0f, rect0.width + 4.0f, rect0.height + 4.0f};
@@ -402,6 +440,10 @@ void updateTwinPlanetDrift(float dt, const Wind& wind) {
         gPlanetDriftVelocities[0].y += normal.y * bounce0;
         gPlanetDriftVelocities[1].x += normal.x * bounce1;
         gPlanetDriftVelocities[1].y += normal.y * bounce1;
+        if (gTwinPlanetCollisionCooldown <= 0.0f) {
+            gTwinPlanetCollisionTriggered = true;
+            gTwinPlanetCollisionCooldown = 0.9f;
+        }
     }
 }
 
@@ -418,13 +460,12 @@ void drawNebulaBackdrop() {
     DrawCircleGradient(GetScreenWidth() - 280, 160, 280.0f, Fade(Color{255, 214, 108, 255}, 0.11f), Fade(BLANK, 0.0f));
     DrawCircleGradient(140, 120, 180.0f, Fade(Color{182, 210, 255, 255}, 0.06f), Fade(BLANK, 0.0f));
 
-    for (int i = 0; i < 120; ++i) {
+    for (int i = 0; i < 72; ++i) {
         float x = static_cast<float>((i * 97) % GetScreenWidth());
         float y = static_cast<float>((i * 53 + 37) % GetScreenHeight());
         float size = 1.0f + static_cast<float>(i % 4);
         float pulse = 0.72f + 0.28f * std::sin(GetTime() * (0.5 + (i % 7) * 0.11) + i);
-        DrawCircleV({x, y}, size * 4.6f, Fade(Color{170, 210, 255, 255}, 0.018f + (i % 4) * 0.014f * pulse));
-        DrawCircleV({x, y}, size * 2.2f, Fade(Color{255, 210, 120, 255}, 0.012f + (i % 3) * 0.01f * pulse));
+        DrawCircleV({x, y}, size * 3.2f, Fade(Color{170, 210, 255, 255}, 0.018f + (i % 4) * 0.014f * pulse));
         DrawCircleV({x, y}, size, Fade(RAYWHITE, 0.14f + (i % 6) * 0.035f * pulse));
     }
 }
@@ -458,18 +499,18 @@ void drawOrbitalBeltField() {
             float ry = baseRy + band * (bandSpacing * 0.72f) + wobble * 0.5f;
             Color bandColor = band == 0 ? Fade(primary, 0.12f) : (band == 1 ? Fade(secondary, 0.09f) : Fade(lerpColor(primary, secondary, 0.5f), 0.06f));
 
-            for (int seg = 0; seg < 90; ++seg) {
-                float a0 = (static_cast<float>(seg) / 90.0f) * 2.0f * PI;
-                float a1 = (static_cast<float>(seg + 1) / 90.0f) * 2.0f * PI;
+            constexpr int kOrbitSegments = 56;
+            for (int seg = 0; seg < kOrbitSegments; ++seg) {
+                float a0 = (static_cast<float>(seg) / static_cast<float>(kOrbitSegments)) * 2.0f * PI;
+                float a1 = (static_cast<float>(seg + 1) / static_cast<float>(kOrbitSegments)) * 2.0f * PI;
                 Vector2 p0{center.x + std::cos(a0) * rx, center.y + std::sin(a0) * ry};
                 Vector2 p1{center.x + std::cos(a1) * rx, center.y + std::sin(a1) * ry};
-                DrawLineEx(p0, p1, 4.6f, Fade(bandColor, 0.08f));
-                DrawLineEx(p0, p1, 2.8f, Fade(bandColor, 0.16f));
-                DrawLineEx(p0, p1, 1.35f, bandColor);
+                DrawLineEx(p0, p1, 2.6f, Fade(bandColor, 0.12f));
+                DrawLineEx(p0, p1, 1.25f, bandColor);
             }
         }
 
-        int rockCount = gTwinPlanets ? 20 : 42;
+        int rockCount = gTwinPlanets ? 14 : 26;
         for (int rock = 0; rock < rockCount; ++rock) {
             float lane = 0.98f + (rock % 7) * 0.08f;
             float angle = t * (kOrbitBeltAngularSpeed * (0.85f + (rock % 5) * 0.08f)) + rock * 0.41f + planetIndex * 0.9f;
@@ -478,9 +519,7 @@ void drawOrbitalBeltField() {
             Vector2 p{center.x + std::cos(angle) * rx, center.y + std::sin(angle) * ry};
             float radius = gTwinPlanets ? 1.0f + (rock % 2) : 1.5f + (rock % 3);
             Color dust = rock % 4 == 0 ? Fade(primary, 0.48f) : Fade(lerpColor(RAYWHITE, secondary, 0.35f), 0.28f);
-            DrawCircleV(p, radius * 6.0f, Fade(dust, 0.025f));
-            DrawCircleV(p, radius * 4.0f, Fade(dust, 0.05f));
-            DrawCircleV(p, radius * 2.4f, Fade(dust, 0.12f));
+            DrawCircleV(p, radius * 3.4f, Fade(dust, 0.05f));
             DrawCircleV(p, radius, dust);
         }
 
@@ -491,11 +530,67 @@ void drawOrbitalBeltField() {
             float ry = baseRy * (1.05f + moon * 0.06f);
             Vector2 p{center.x + std::cos(angle) * rx, center.y + std::sin(angle) * ry};
             float moonRadius = gTwinPlanets ? 2.8f + moon * 0.4f : 3.5f + moon * 0.5f;
-            DrawCircleV(p, moonRadius * 6.6f, Fade(primary, 0.03f));
-            DrawCircleV(p, moonRadius * 4.2f, Fade(primary, 0.06f));
-            DrawCircleV(p, moonRadius * 2.6f, Fade(primary, 0.12f));
+            DrawCircleV(p, moonRadius * 3.8f, Fade(primary, 0.08f));
             DrawCircleV(p, moonRadius, Fade(lerpColor(primary, secondary, 0.45f), 0.55f));
         }
+    }
+}
+
+void drawTwinPlanetRingRopes() {
+    if (!gTwinPlanets) {
+        return;
+    }
+
+    Rectangle bounds = twinPlanetRingBounds();
+    float inset = 8.0f;
+    Rectangle ring{
+        bounds.x + inset,
+        bounds.y + inset,
+        bounds.width - inset * 2.0f,
+        bounds.height - inset * 2.0f
+    };
+
+    Color ropeA{255, 114, 162, 255};
+    Color ropeB{106, 214, 255, 255};
+    Color post{255, 232, 180, 255};
+    float t = static_cast<float>(GetTime());
+
+    auto drawRopeLoop = [&](float expand, float thickness, Color color, float phase) {
+        Vector2 tl{ring.x - expand, ring.y - expand};
+        Vector2 tr{ring.x + ring.width + expand, ring.y - expand};
+        Vector2 br{ring.x + ring.width + expand, ring.y + ring.height + expand};
+        Vector2 bl{ring.x - expand, ring.y + ring.height + expand};
+
+        float wobbleTop = std::sin(t * 1.4f + phase) * 1.2f;
+        float wobbleRight = std::sin(t * 1.3f + phase + 1.4f) * 1.2f;
+        float wobbleBottom = std::sin(t * 1.5f + phase + 2.2f) * 1.2f;
+        float wobbleLeft = std::sin(t * 1.35f + phase + 3.1f) * 1.2f;
+
+        DrawLineEx({tl.x, tl.y + wobbleTop}, {tr.x, tr.y + wobbleTop}, thickness * 2.4f, Fade(color, 0.10f));
+        DrawLineEx({tr.x + wobbleRight, tr.y}, {br.x + wobbleRight, br.y}, thickness * 2.4f, Fade(color, 0.10f));
+        DrawLineEx({bl.x, bl.y + wobbleBottom}, {br.x, br.y + wobbleBottom}, thickness * 2.4f, Fade(color, 0.10f));
+        DrawLineEx({tl.x + wobbleLeft, tl.y}, {bl.x + wobbleLeft, bl.y}, thickness * 2.4f, Fade(color, 0.10f));
+
+        DrawLineEx({tl.x, tl.y + wobbleTop}, {tr.x, tr.y + wobbleTop}, thickness, color);
+        DrawLineEx({tr.x + wobbleRight, tr.y}, {br.x + wobbleRight, br.y}, thickness, color);
+        DrawLineEx({bl.x, bl.y + wobbleBottom}, {br.x, br.y + wobbleBottom}, thickness, color);
+        DrawLineEx({tl.x + wobbleLeft, tl.y}, {bl.x + wobbleLeft, bl.y}, thickness, color);
+    };
+
+    drawRopeLoop(0.0f, 2.0f, Fade(ropeA, 0.78f), 0.1f);
+    drawRopeLoop(10.0f, 2.4f, Fade(ropeB, 0.72f), 0.8f);
+    drawRopeLoop(20.0f, 1.8f, Fade(lerpColor(ropeA, ropeB, 0.5f), 0.58f), 1.6f);
+
+    std::array<Vector2, 4> posts = {{
+        {ring.x, ring.y},
+        {ring.x + ring.width, ring.y},
+        {ring.x + ring.width, ring.y + ring.height},
+        {ring.x, ring.y + ring.height}
+    }};
+    for (const Vector2& p : posts) {
+        DrawCircleV(p, 14.0f, Fade(post, 0.10f));
+        DrawCircleV(p, 8.0f, Fade(post, 0.28f));
+        DrawCircleV(p, 3.4f, post);
     }
 }
 
@@ -513,9 +608,9 @@ void drawAtmosphereForRect(const Rectangle& planet, const PlanetStyle& style, in
     Color secondary = themeSecondary(style.theme);
     float pulse = 0.94f + std::sin(GetTime() * (0.35f + style.glowPulse * 0.2f) + planetIndex) * 0.06f;
 
-    for (int shell = 0; shell < 10; ++shell) {
+    for (int shell = 0; shell < 6; ++shell) {
         float expand = shellSpacing * (shell + 1);
-        float alpha = 0.12f * shellAlphaScale * (1.0f - static_cast<float>(shell) / 10.0f);
+        float alpha = 0.11f * shellAlphaScale * (1.0f - static_cast<float>(shell) / 6.0f);
         float roundness = 0.035f + 0.02f * shell;
         Color shellColor = lerpColor(primary, secondary, static_cast<float>(shell) / 9.0f);
         DrawRectangleRounded(
@@ -542,8 +637,8 @@ void drawAtmosphereForRect(const Rectangle& planet, const PlanetStyle& style, in
         );
     }
 
-    for (int layer = 0; layer < 24; ++layer) {
-        float t = static_cast<float>(layer) / 23.0f;
+    for (int layer = 0; layer < 14; ++layer) {
+        float t = static_cast<float>(layer) / 13.0f;
         float radius = cornerRadius + atmosphereThickness * (0.18f + t * 0.92f);
         float alpha = 0.11f * shellAlphaScale * (1.0f - t * 0.72f);
         Color glow = lerpColor(primary, secondary, t);
@@ -625,6 +720,31 @@ Game::~Game() {
     if (playerSpriteLoaded_) {
         UnloadTexture(playerSprite_);
     }
+    if (nebulaCache_.id != 0) {
+        UnloadRenderTexture(nebulaCache_);
+    }
+}
+
+void Game::ensureNebulaCache() const {
+    int width = GetScreenWidth();
+    int height = GetScreenHeight();
+    if (nebulaCache_.id != 0 && width == nebulaCacheWidth_ && height == nebulaCacheHeight_) {
+        return;
+    }
+
+    if (nebulaCache_.id != 0) {
+        UnloadRenderTexture(nebulaCache_);
+        nebulaCache_ = {};
+    }
+
+    nebulaCache_ = LoadRenderTexture(width, height);
+    nebulaCacheWidth_ = width;
+    nebulaCacheHeight_ = height;
+
+    BeginTextureMode(nebulaCache_);
+    ClearBackground(BLACK);
+    drawNebulaBackdrop();
+    EndTextureMode();
 }
 
 void Game::reset() {
@@ -647,6 +767,7 @@ void Game::reset() {
     }
     for (int i = 0; i < 2; ++i) {
         gPlanetDriftOffsets[i] = {0.0f, 0.0f};
+        gPlanetVisualOffsets[i] = {0.0f, 0.0f};
         gPlanetDriftVelocities[i] = {0.0f, 0.0f};
     }
     if (gTwinPlanets) {
@@ -695,6 +816,10 @@ void Game::update(float dt) {
     }
 
     updateTwinPlanetDrift(dt, wind_);
+    if (gTwinPlanetCollisionTriggered) {
+        generateCollisionResources();
+        gTwinPlanetCollisionTriggered = false;
+    }
 
     if (gameOver_) {
         if (IsKeyPressed(KEY_ENTER)) {
@@ -727,9 +852,10 @@ void Game::update(float dt) {
 
 void Game::updatePassiveResourceRegen(float dt) {
     for (Player& player : players_) {
-        if (player.fuel < kMissileFuelCost) {
+        int fuelTarget = currentFuelLaunchCost();
+        if (player.fuel < fuelTarget) {
             player.fuelRegenProgress += dt;
-            while (player.fuel < kMissileFuelCost && player.fuelRegenProgress >= kPassiveFuelRegenSeconds) {
+            while (player.fuel < fuelTarget && player.fuelRegenProgress >= kPassiveFuelRegenSeconds) {
                 player.fuel += 1;
                 player.fuelRegenProgress -= kPassiveFuelRegenSeconds;
             }
@@ -737,9 +863,10 @@ void Game::updatePassiveResourceRegen(float dt) {
             player.fuelRegenProgress = 0.0f;
         }
 
-        if (player.metal < kMissileMetalCost) {
+        int metalTarget = currentMetalLaunchCost();
+        if (player.metal < metalTarget) {
             player.metalRegenProgress += dt;
-            while (player.metal < kMissileMetalCost && player.metalRegenProgress >= kPassiveMetalRegenSeconds) {
+            while (player.metal < metalTarget && player.metalRegenProgress >= kPassiveMetalRegenSeconds) {
                 player.metal += 1;
                 player.metalRegenProgress -= kPassiveMetalRegenSeconds;
             }
@@ -819,7 +946,7 @@ void Game::updatePlayer(float dt, Player& player, int leftKey, int rightKey, int
     player.launchPower = clampf(
         player.launchPower + (IsKeyDown(powerUpKey) ? 18.0f * dt : 0.0f) - (IsKeyDown(powerDownKey) ? 18.0f * dt : 0.0f),
         6.5f,
-        14.0f
+        gTwinPlanets ? 56.0f : 14.0f
     );
 
     int dx = 0;
@@ -965,6 +1092,37 @@ bool Game::collectBlockResource(Player& player, BlockType type) {
     return false;
 }
 
+void Game::generateCollisionResources() {
+    if (!gTwinPlanets || world_.planetCount() < 2) {
+        return;
+    }
+
+    static std::mt19937 rng(std::random_device{}());
+
+    for (int planetIndex = 0; planetIndex < world_.planetCount(); ++planetIndex) {
+        const PlanetRegion& region = world_.planetForPlayer(planetIndex);
+        std::uniform_int_distribution<int> xDist(region.minX + 1, region.maxX - 1);
+        std::uniform_int_distribution<int> yDist(region.minY + 1, region.maxY - 1);
+        std::uniform_int_distribution<int> zDist(region.minZ + 1, region.maxZ - 1);
+        std::uniform_real_distribution<float> oreRoll(0.0f, 1.0f);
+
+        int placed = 0;
+        int tries = 0;
+        while (placed < 6 && tries < 120) {
+            ++tries;
+            Vec3i p{xDist(rng), yDist(rng), zDist(rng)};
+            Block block = world_.get(p);
+            if (block.type == BlockType::Air || isStructure(block.type)) {
+                continue;
+            }
+
+            float roll = oreRoll(rng);
+            world_.set(p, roll < 0.5f ? BlockType::FuelOre : BlockType::MetalOre);
+            ++placed;
+        }
+    }
+}
+
 void Game::applyDamage(Player& player, int damage, int sourceOwnerId) {
     if (damage <= 0 || player.health <= 0) {
         return;
@@ -1103,45 +1261,21 @@ std::optional<Vec3i> Game::findNearbyOwnedSilo(const Player& player) const {
 }
 
 Vec3 Game::missileLaunchDirection(const Player& player, const Vec3& launchPosition) const {
-    if (!gTwinPlanets) {
-        return vecFromAngle(player.id, player.aimAngleDeg);
-    }
-
-    Vec3 outward = outwardNormalForPlayer(player.id);
-    Vec3 enemyCenter = world_.planetForPlayer(1 - player.id).center();
-    Vec3 toEnemy = normalize(enemyCenter - launchPosition);
-    if (length(toEnemy) < 0.001f) {
-        return vecFromAngle(player.id, player.aimAngleDeg);
-    }
-
-    Vec3 tangent{0.0f, -1.0f, 0.0f};
-    float angleT = clampf((player.aimAngleDeg - 45.0f) / 45.0f, -1.0f, 1.0f);
-
-    // Start from a slightly outward-biased line toward the enemy, then let high angles peel strongly away from the source planet.
-    Vec3 base = normalize(toEnemy * 0.74f + outward * 0.26f);
-    Vec3 dir = base;
-
-    if (angleT >= 0.0f) {
-        float outwardBias = std::pow(angleT, 0.72f);
-        dir = normalize(base * (1.0f - outwardBias) + outward * (0.92f * outwardBias) + tangent * (0.38f * outwardBias));
-    } else {
-        float inwardBias = std::pow(-angleT, 0.78f);
-        Vec3 lowerArc = normalize(toEnemy * 0.88f + tangent * (-0.48f));
-        dir = normalize(base * (1.0f - inwardBias) + lowerArc * inwardBias);
-    }
-
-    return dir;
+    (void)launchPosition;
+    return vecFromAngle(player.id, player.aimAngleDeg);
 }
 
 void Game::fireMissile(Player& player) {
-    if (!spend(player, kMissileFuelCost, kMissileMetalCost)) {
+    int fuelCost = currentFuelLaunchCost();
+    int metalCost = currentMetalLaunchCost();
+    if (!spend(player, fuelCost, metalCost)) {
         return;
     }
 
     std::optional<Vec3i> silo = findNearbyOwnedSilo(player);
     if (!silo.has_value()) {
-        player.fuel += kMissileFuelCost;
-        player.metal += kMissileMetalCost;
+        player.fuel += fuelCost;
+        player.metal += metalCost;
         return;
     }
 
@@ -1159,17 +1293,7 @@ void Game::fireMissile(Player& player) {
 void Game::updateMissilePhysics(Missile& missile, const Wind& wind, float dt) const {
     Vec3 gravity{};
     if (gTwinPlanets) {
-        Vec3 targetCenter = world_.planetForPlayer(1 - missile.ownerId).center();
-        Vec3 sourceCenter = world_.planetForPlayer(missile.ownerId).center();
-        Vec3 toTarget = targetCenter - missile.position;
-        Vec3 awayFromSource = missile.position - sourceCenter;
-        float distanceToTarget = std::max(1.0f, length(toTarget));
-        float distanceFromSource = std::max(1.0f, length(awayFromSource));
-        gravity = normalize(toTarget) * (kTwinTargetGravityMu / (distanceToTarget * distanceToTarget));
-        if (missile.age < 0.95f) {
-            float repelWeight = 1.0f - (missile.age / 0.95f);
-            gravity += normalize(awayFromSource) * ((kTwinSourceRepelMu * repelWeight) / (distanceFromSource * distanceFromSource));
-        }
+        gravity = {0.0f, kTwinBombGravity, 0.0f};
     } else {
         Vec3 toCenter = world_.center() - missile.position;
         float distanceToCenter = std::max(1.0f, length(toCenter));
@@ -1191,6 +1315,44 @@ void Game::updateMissilePhysics(Missile& missile, const Wind& wind, float dt) co
     missile.velocity += (gravity + windForce + dragForce + launchBoost) * dt;
     missile.position += missile.velocity * dt;
     missile.age += dt;
+
+    if (gTwinPlanets) {
+        Rectangle ropeBounds = twinPlanetRingBounds();
+        Vector2 screen = worldPointToScreen(missile.position);
+        float cell = worldCellSize();
+        bool bounced = false;
+
+        if (screen.x < ropeBounds.x) {
+            missile.position.x += (ropeBounds.x - screen.x) / cell;
+            missile.velocity.x = std::fabs(missile.velocity.x) * kTwinBombBounceBoost;
+            bounced = true;
+        } else if (screen.x > ropeBounds.x + ropeBounds.width) {
+            missile.position.x -= (screen.x - (ropeBounds.x + ropeBounds.width)) / cell;
+            missile.velocity.x = -std::fabs(missile.velocity.x) * kTwinBombBounceBoost;
+            bounced = true;
+        }
+
+        if (screen.y < ropeBounds.y) {
+            missile.position.y += (ropeBounds.y - screen.y) / cell;
+            missile.velocity.y = std::fabs(missile.velocity.y) * kTwinBombBounceBoost;
+            bounced = true;
+        } else if (screen.y > ropeBounds.y + ropeBounds.height) {
+            missile.position.y -= (screen.y - (ropeBounds.y + ropeBounds.height)) / cell;
+            missile.velocity.y = -std::fabs(missile.velocity.y) * kTwinBombBounceBoost;
+            bounced = true;
+        }
+
+        if (bounced) {
+            missile.ropeBounces += 1;
+            float speed = length(missile.velocity);
+            if (speed > kTwinBombMaxSpeed) {
+                missile.velocity *= (kTwinBombMaxSpeed / speed);
+            }
+            if (missile.ropeBounces >= 4) {
+                missile.state = MissileState::Exploded;
+            }
+        }
+    }
 }
 
 bool Game::missileHasCollided(const Missile& missile) const {
@@ -1205,6 +1367,31 @@ bool Game::missileHasCollided(const Missile& missile) const {
     return world_.inBounds(cell) && world_.isSolid(cell);
 }
 
+std::optional<Vec3> Game::firstMissileCollisionPoint(const Vec3& from, const Vec3& to) const {
+    Vec3 delta = to - from;
+    float dist = length(delta);
+    if (dist <= 0.001f) {
+        return std::nullopt;
+    }
+
+    Vec3 dir = delta / dist;
+    const int samples = std::max(4, static_cast<int>(std::ceil(dist * 12.0f)));
+    for (int i = 1; i <= samples; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(samples);
+        Vec3 probe = from + dir * (dist * t);
+        Vec3i cell{
+            static_cast<int>(std::floor(probe.x)),
+            static_cast<int>(std::floor(probe.y)),
+            world_.sliceZ()
+        };
+        if (world_.inBounds(cell) && world_.isSolid(cell)) {
+            return probe;
+        }
+    }
+
+    return std::nullopt;
+}
+
 void Game::updateMissiles(float dt) {
     for (Missile& missile : missiles_) {
         if (missile.state != MissileState::Flying) {
@@ -1213,7 +1400,21 @@ void Game::updateMissiles(float dt) {
 
         float stepDt = dt / static_cast<float>(kMissileSubsteps);
         for (int step = 0; step < kMissileSubsteps; ++step) {
+            Vec3 previousPosition = missile.position;
             updateMissilePhysics(missile, wind_, stepDt);
+
+            if (missile.state == MissileState::Exploded) {
+                explodeAt(missile.position, missile.blastRadius, missile.ownerId);
+                break;
+            }
+
+            std::optional<Vec3> hitPoint = firstMissileCollisionPoint(previousPosition, missile.position);
+            if (hitPoint.has_value()) {
+                missile.position = *hitPoint;
+                missile.state = MissileState::Exploded;
+                explodeAt(missile.position, missile.blastRadius, missile.ownerId);
+                break;
+            }
 
             if (missileHasCollided(missile)) {
                 missile.state = MissileState::Exploded;
@@ -1324,9 +1525,12 @@ std::vector<Vec3> Game::predictArcPartial(Missile missile, const Wind& wind, flo
 
     // Show only the opening part of the flight so aiming still has uncertainty.
     for (int i = 0; i < visibleSamples; ++i) {
+        Vec3 previousPosition = missile.position;
         updateMissilePhysics(missile, wind, dt);
         points.push_back(missile.position);
-        if (missileHasCollided(missile)) {
+        if (missile.state != MissileState::Flying ||
+            firstMissileCollisionPoint(previousPosition, missile.position).has_value() ||
+            missileHasCollided(missile)) {
             break;
         }
     }
@@ -1363,7 +1567,27 @@ std::string Game::predictedImpactText(const Player& player) const {
 
     for (int i = 0; i < 420; ++i) {
         for (int step = 0; step < kMissileSubsteps; ++step) {
+            Vec3 previousPosition = probe.position;
             updateMissilePhysics(probe, wind_, 0.035f / static_cast<float>(kMissileSubsteps));
+            std::optional<Vec3> hitPoint = firstMissileCollisionPoint(previousPosition, probe.position);
+            if (hitPoint.has_value()) {
+                probe.position = *hitPoint;
+                Vec3i cell{
+                    static_cast<int>(std::floor(probe.position.x)),
+                    static_cast<int>(std::floor(probe.position.y)),
+                    world_.sliceZ()
+                };
+
+                int leftBand = world_.activeMinX() + (world_.activeMaxX() - world_.activeMinX()) / 3;
+                int rightBand = world_.activeMaxX() - (world_.activeMaxX() - world_.activeMinX()) / 3;
+                if (cell.x <= leftBand) {
+                    return "impact: left side";
+                }
+                if (cell.x >= rightBand) {
+                    return "impact: right side";
+                }
+                return "impact: core/middle";
+            }
             if (missileHasCollided(probe)) {
                 Vec3i cell{
                     static_cast<int>(std::floor(probe.position.x)),
@@ -1403,7 +1627,7 @@ std::string Game::contextualCostText(const Player& player) const {
                 : "cost: unavailable in attack";
         case ToolType::Fire:
             return currentPhase() == TurnPhase::AttackDefend
-                ? "cost: 15 fuel, 20 metal"
+                ? (gTwinPlanets ? "cost: 8 fuel, 10 metal" : "cost: 15 fuel, 20 metal")
                 : "cost: unavailable in mining";
         case ToolType::Drill:
             return "cost: unused";
@@ -1426,8 +1650,17 @@ void Game::draw() const {
 }
 
 void Game::drawWorldSlice() const {
-    drawNebulaBackdrop();
+    ensureNebulaCache();
+    DrawTexturePro(
+        nebulaCache_.texture,
+        Rectangle{0.0f, 0.0f, static_cast<float>(nebulaCache_.texture.width), -static_cast<float>(nebulaCache_.texture.height)},
+        Rectangle{0.0f, 0.0f, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())},
+        Vector2{0.0f, 0.0f},
+        0.0f,
+        WHITE
+    );
 
+    drawTwinPlanetRingRopes();
     drawPlanetAtmosphere();
     drawOrbitalBeltField();
 
@@ -1485,10 +1718,6 @@ void Game::drawWorldSlice() const {
             if (block.type == BlockType::Air) {
                 float vignette = (std::sin((x + y) * 0.55f) + 1.0f) * 0.5f;
                 DrawRectangleRec(cellRect, lerpColor(Color{13, 20, 33, 255}, Color{18, 28, 44, 255}, vignette));
-                DrawRectangleRec(
-                    Rectangle{cellRect.x + cellRect.width * 0.15f, cellRect.y + cellRect.height * 0.15f, cellRect.width * 0.12f, cellRect.height * 0.12f},
-                    Fade(SKYBLUE, 0.035f)
-                );
                 continue;
             }
 
@@ -1502,14 +1731,16 @@ void Game::drawWorldSlice() const {
                 topGlow,
                 baseShade
             );
-            DrawRectangleRec(
-                Rectangle{cellRect.x - 0.5f, cellRect.y - 0.5f, cellRect.width + 1.0f, cellRect.height + 1.0f},
-                Fade(c, 0.035f)
-            );
-            DrawRectangleRec(
-                Rectangle{cellRect.x + 1.0f, cellRect.y + 1.0f, cellRect.width - 2.0f, cellRect.height - 2.0f},
-                Fade(WHITE, 0.025f)
-            );
+            if (cell >= 16.0f) {
+                DrawRectangleRec(
+                    Rectangle{cellRect.x - 0.5f, cellRect.y - 0.5f, cellRect.width + 1.0f, cellRect.height + 1.0f},
+                    Fade(c, 0.035f)
+                );
+                DrawRectangleRec(
+                    Rectangle{cellRect.x + 1.0f, cellRect.y + 1.0f, cellRect.width - 2.0f, cellRect.height - 2.0f},
+                    Fade(WHITE, 0.025f)
+                );
+            }
 
             if (block.type == BlockType::FuelOre || block.type == BlockType::MetalOre) {
                 Color aura = block.type == BlockType::FuelOre ? Fade(Color{255, 214, 82, 255}, 0.24f) : Fade(Color{92, 232, 255, 255}, 0.26f);
@@ -1517,15 +1748,17 @@ void Game::drawWorldSlice() const {
                     Rectangle{cellRect.x - 2.5f, cellRect.y - 2.5f, cellRect.width + 5.0f, cellRect.height + 5.0f},
                     aura
                 );
-                DrawRectangleRec(
-                    Rectangle{cellRect.x - 4.0f, cellRect.y - 4.0f, cellRect.width + 8.0f, cellRect.height + 8.0f},
-                    block.type == BlockType::FuelOre ? Fade(Color{255, 210, 80, 255}, 0.06f) : Fade(Color{92, 232, 255, 255}, 0.07f)
-                );
-                DrawCircleV(
-                    {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
-                    cellRect.width * 0.18f,
-                    block.type == BlockType::FuelOre ? Fade(RAYWHITE, 0.75f) : Fade(WHITE, 0.72f)
-                );
+                if (cell >= 15.0f) {
+                    DrawRectangleRec(
+                        Rectangle{cellRect.x - 4.0f, cellRect.y - 4.0f, cellRect.width + 8.0f, cellRect.height + 8.0f},
+                        block.type == BlockType::FuelOre ? Fade(Color{255, 210, 80, 255}, 0.06f) : Fade(Color{92, 232, 255, 255}, 0.07f)
+                    );
+                    DrawCircleV(
+                        {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
+                        cellRect.width * 0.18f,
+                        block.type == BlockType::FuelOre ? Fade(RAYWHITE, 0.75f) : Fade(WHITE, 0.72f)
+                    );
+                }
                 DrawCircleV(
                     {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
                     cellRect.width * 0.44f,
@@ -1543,19 +1776,23 @@ void Game::drawWorldSlice() const {
                     Rectangle{cellRect.x + 1.0f, cellRect.y + 1.0f, cellRect.width - 2.0f, cellRect.height - 2.0f},
                     Fade(WHITE, 0.10f)
                 );
-                DrawRectangleRec(
-                    Rectangle{cellRect.x + 2.0f, cellRect.y + 2.0f, cellRect.width - 4.0f, cellRect.height * 0.22f},
-                    Fade(WHITE, 0.14f)
-                );
+                if (cell >= 15.0f) {
+                    DrawRectangleRec(
+                        Rectangle{cellRect.x + 2.0f, cellRect.y + 2.0f, cellRect.width - 4.0f, cellRect.height * 0.22f},
+                        Fade(WHITE, 0.14f)
+                    );
+                }
                 DrawRectangleRec(
                     Rectangle{cellRect.x - 1.0f, cellRect.y - 1.0f, cellRect.width + 2.0f, cellRect.height + 2.0f},
                     Fade(c, 0.10f)
                 );
-                DrawCircleV(
-                    {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
-                    cellRect.width * 0.65f,
-                    Fade(c, 0.08f)
-                );
+                if (cell >= 15.0f) {
+                    DrawCircleV(
+                        {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
+                        cellRect.width * 0.65f,
+                        Fade(c, 0.08f)
+                    );
+                }
                 if (block.type == BlockType::ArmourBlock) {
                     DrawRectangleLinesEx(
                         Rectangle{cellRect.x + 3.0f, cellRect.y + 3.0f, cellRect.width - 6.0f, cellRect.height - 6.0f},
@@ -1846,6 +2083,53 @@ void Game::drawMissiles() const {
         }
         Vector2 p = worldPointToScreen(missile.position);
         Color tint = missile.ownerId == 0 ? SKYBLUE : PINK;
+
+        if (gTwinPlanets) {
+            for (int trail = 4; trail >= 1; --trail) {
+                Vector2 tail{
+                    p.x - missile.velocity.x * 0.12f * trail,
+                    p.y - missile.velocity.y * 0.12f * trail
+                };
+                float trailSize = 7.0f - trail * 0.8f;
+                DrawCircleV(tail, trailSize * 1.6f, Fade(tint, 0.025f * trail));
+                DrawRectangleRounded(
+                    Rectangle{tail.x - trailSize * 0.45f, tail.y - trailSize * 0.45f, trailSize * 0.9f, trailSize * 0.9f},
+                    0.24f,
+                    4,
+                    Fade(tint, 0.06f * trail)
+                );
+            }
+
+            DrawCircleV(p, 28.0f, Fade(tint, 0.08f));
+            DrawRectangleRounded(
+                Rectangle{p.x - 7.5f, p.y - 7.5f, 15.0f, 15.0f},
+                0.28f,
+                4,
+                lerpColor(Color{34, 36, 46, 255}, tint, 0.45f)
+            );
+            DrawRectangleRounded(
+                Rectangle{p.x - 5.5f, p.y - 5.5f, 11.0f, 11.0f},
+                0.26f,
+                4,
+                Fade(Color{255, 240, 210, 255}, 0.78f)
+            );
+            DrawRectangleRounded(
+                Rectangle{p.x - 4.5f, p.y - 4.5f, 9.0f, 9.0f},
+                0.24f,
+                4,
+                lerpColor(Color{72, 74, 90, 255}, tint, 0.55f)
+            );
+            Vector2 fuseBase{p.x, p.y - 5.0f};
+            Vector2 fuseTip{p.x + 3.5f, p.y - 11.0f};
+            DrawLineEx(fuseBase, fuseTip, 2.0f, Fade(Color{255, 224, 160, 255}, 0.95f));
+            DrawCircleV(fuseTip, 4.2f, Fade(Color{255, 188, 84, 255}, 0.18f));
+            DrawCircleV(fuseTip, 2.1f, Color{255, 224, 160, 255});
+            for (int i = 0; i < missile.ropeBounces && i < 4; ++i) {
+                DrawCircleV({p.x - 10.0f + i * 6.0f, p.y + 11.0f}, 1.6f, Fade(WHITE, 0.88f));
+            }
+            continue;
+        }
+
         for (int trail = 4; trail >= 1; --trail) {
             Vector2 tail{
                 p.x - missile.velocity.x * 0.22f * trail,
