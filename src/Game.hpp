@@ -1,10 +1,12 @@
 #pragma once
 
+#include "raylib.h"
 #include "World.hpp"
 
 class Game {
 public:
     Game();
+    ~Game();
 
     void update(float dt);
     void draw() const;
@@ -33,10 +35,12 @@ private:
     void applyDamage(Player& player, int damage, int sourceOwnerId);
     bool spend(Player& player, int fuelCost, int metalCost);
     bool canPlayerStand(const Player& player, const Vec3i& cell) const;
+    void updatePassiveResourceRegen(float dt);
 
     void updateMiningBlocks(float dt);
     void fireMissile(Player& player);
     std::optional<Vec3i> findNearbyOwnedSilo(const Player& player) const;
+    Vec3 missileLaunchDirection(const Player& player, const Vec3& launchPosition) const;
     void updateMissiles(float dt);
     void explodeAt(const Vec3& position, float radius, int ownerId);
     bool wallResistsExplosion(const Vec3i& cell) const;
@@ -51,12 +55,14 @@ private:
     void updateMissilePhysics(Missile& missile, const Wind& wind, float dt) const;
 
     void drawWorldSlice() const;
+    void drawPlayerCloseups() const;
     void drawPlayers() const;
     void drawMissiles() const;
     void drawExplosions() const;
     void drawHud() const;
     void drawPreviewArc(const Player& player) const;
     void drawHelp() const;
+    void drawPlayerSprite(int playerId, Vector2 center, float height, float alpha = 1.0f) const;
 
     World world_;
     Player players_[2];
@@ -65,8 +71,10 @@ private:
     std::vector<MiningBlockEntity> miningBlocks_;
     std::vector<Missile> missiles_;
     std::vector<Explosion> explosions_;
+    Texture2D playerSprite_{};
+    bool playerSpriteLoaded_ = false;
 
-    bool showHelp_ = true;
+    bool showHelp_ = false;
     bool gameOver_ = false;
     int winnerId_ = -1;
 };
