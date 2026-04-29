@@ -49,14 +49,14 @@ Color lerpColor(Color a, Color b, float t) {
 Color colorForBlock(const Block& block) {
     switch (block.type) {
         case BlockType::Air: return {10, 16, 22, 255};
-        case BlockType::Stone: return {82, 92, 104, 255};
-        case BlockType::Dirt: return {121, 90, 57, 255};
-        case BlockType::FuelOre: return {233, 180, 64, 255};
-        case BlockType::MetalOre: return {90, 199, 220, 255};
-        case BlockType::PlayerWall: return block.ownerId == 0 ? Color{85, 170, 255, 255} : Color{255, 120, 120, 255};
-        case BlockType::ArmourBlock: return block.ownerId == 0 ? Color{35, 111, 186, 255} : Color{187, 62, 62, 255};
+        case BlockType::Stone: return {108, 120, 138, 255};
+        case BlockType::Dirt: return {164, 118, 72, 255};
+        case BlockType::FuelOre: return {255, 203, 52, 255};
+        case BlockType::MetalOre: return {74, 225, 245, 255};
+        case BlockType::PlayerWall: return block.ownerId == 0 ? Color{88, 193, 255, 255} : Color{255, 134, 154, 255};
+        case BlockType::ArmourBlock: return block.ownerId == 0 ? Color{48, 133, 232, 255} : Color{222, 88, 108, 255};
         case BlockType::MiningBlock: return block.ownerId == 0 ? Color{163, 214, 255, 255} : Color{255, 180, 180, 255};
-        case BlockType::MissileSilo: return block.ownerId == 0 ? Color{114, 255, 172, 255} : Color{255, 103, 168, 255};
+        case BlockType::MissileSilo: return block.ownerId == 0 ? Color{104, 255, 160, 255} : Color{255, 103, 190, 255};
     }
     return MAGENTA;
 }
@@ -160,20 +160,20 @@ Vector2 worldPointToScreen(const Vec3& p) {
 }
 
 void drawNebulaBackdrop() {
-    DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), Color{8, 14, 28, 255}, Color{2, 6, 15, 255});
+    DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), Color{14, 24, 48, 255}, Color{7, 10, 24, 255});
 
-    DrawCircleGradient(GetScreenWidth() / 2 - 140, 140, 260.0f, Fade(Color{41, 112, 175, 90}, 0.28f), Fade(BLANK, 0.0f));
-    DrawCircleGradient(GetScreenWidth() / 2 + 60, GetScreenHeight() - 120, 340.0f, Fade(Color{16, 78, 123, 70}, 0.24f), Fade(BLANK, 0.0f));
-    DrawCircleGradient(210, GetScreenHeight() / 2 + 90, 220.0f, Fade(Color{164, 93, 68, 55}, 0.22f), Fade(BLANK, 0.0f));
-    DrawCircleGradient(GetScreenWidth() / 2 + 10, GetScreenHeight() / 2 - 140, 300.0f, Fade(Color{49, 140, 220, 80}, 0.16f), Fade(BLANK, 0.0f));
-    DrawCircleGradient(GetScreenWidth() / 2 - 260, GetScreenHeight() - 240, 260.0f, Fade(Color{194, 98, 78, 55}, 0.12f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(GetScreenWidth() / 2 - 140, 140, 260.0f, Fade(Color{70, 168, 255, 90}, 0.30f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(GetScreenWidth() / 2 + 60, GetScreenHeight() - 120, 340.0f, Fade(Color{40, 124, 220, 80}, 0.26f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(210, GetScreenHeight() / 2 + 90, 220.0f, Fade(Color{255, 136, 84, 58}, 0.22f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(GetScreenWidth() / 2 + 10, GetScreenHeight() / 2 - 140, 300.0f, Fade(Color{110, 210, 255, 88}, 0.18f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(GetScreenWidth() / 2 - 260, GetScreenHeight() - 240, 260.0f, Fade(Color{255, 122, 163, 52}, 0.12f), Fade(BLANK, 0.0f));
 
     for (int i = 0; i < 120; ++i) {
         float x = static_cast<float>((i * 97) % GetScreenWidth());
         float y = static_cast<float>((i * 53 + 37) % GetScreenHeight());
         float size = 1.0f + static_cast<float>(i % 4);
         float pulse = 0.72f + 0.28f * std::sin(GetTime() * (0.5 + (i % 7) * 0.11) + i);
-        DrawCircleV({x, y}, size, Fade(RAYWHITE, 0.10f + (i % 6) * 0.03f * pulse));
+        DrawCircleV({x, y}, size, Fade(RAYWHITE, 0.14f + (i % 6) * 0.035f * pulse));
     }
 }
 
@@ -193,7 +193,7 @@ void drawOrbitalBeltField() {
         float wobble = std::sin(t * (0.22f + band * 0.07f)) * (6.0f + band * 2.5f);
         float rx = baseRx + band * bandSpacing + wobble;
         float ry = baseRy + band * (bandSpacing * 0.72f) + wobble * 0.5f;
-        Color bandColor = band == 0 ? Fade(SKYBLUE, 0.09f) : (band == 1 ? Fade(VIOLET, 0.06f) : Fade(GOLD, 0.05f));
+        Color bandColor = band == 0 ? Fade(Color{89, 210, 255, 255}, 0.11f) : (band == 1 ? Fade(Color{130, 125, 255, 255}, 0.07f) : Fade(Color{255, 212, 82, 255}, 0.06f));
 
         for (int seg = 0; seg < 90; ++seg) {
             float a0 = (static_cast<float>(seg) / 90.0f) * 2.0f * PI;
@@ -211,7 +211,7 @@ void drawOrbitalBeltField() {
         float ry = baseRy * (0.9f + (rock % 5) * 0.05f);
         Vector2 p{center.x + std::cos(angle) * rx, center.y + std::sin(angle) * ry};
         float radius = 1.5f + (rock % 3);
-        Color dust = rock % 4 == 0 ? Fade(GOLD, 0.42f) : Fade(RAYWHITE, 0.22f);
+        Color dust = rock % 4 == 0 ? Fade(Color{255, 213, 84, 255}, 0.48f) : Fade(RAYWHITE, 0.28f);
         DrawCircleV(p, radius * 2.4f, Fade(dust, 0.08f));
         DrawCircleV(p, radius, dust);
     }
@@ -231,7 +231,7 @@ void drawPlanetAtmosphere() {
         float expand = shellSpacing * (shell + 1);
         float alpha = 0.12f * shellAlphaScale * (1.0f - static_cast<float>(shell) / 10.0f);
         float roundness = 0.035f + 0.02f * shell;
-        Color shellColor = lerpColor(Color{114, 186, 255, 255}, Color{189, 247, 255, 255}, static_cast<float>(shell) / 9.0f);
+        Color shellColor = lerpColor(Color{114, 186, 255, 255}, Color{255, 188, 244, 255}, static_cast<float>(shell) / 9.0f);
         DrawRectangleRounded(
             Rectangle{
                 planet.x - expand,
@@ -249,7 +249,7 @@ void drawPlanetAtmosphere() {
         float t = static_cast<float>(layer) / 23.0f;
         float radius = cornerRadius + atmosphereThickness * (0.18f + t * 0.92f);
         float alpha = 0.11f * shellAlphaScale * (1.0f - t * 0.72f);
-        Color glow = lerpColor(Color{116, 192, 255, 255}, Color{195, 255, 249, 255}, t);
+        Color glow = lerpColor(Color{116, 192, 255, 255}, Color{255, 212, 247, 255}, t);
         DrawCircleGradient(
             static_cast<int>(center.x),
             static_cast<int>(center.y),
@@ -263,7 +263,7 @@ void drawPlanetAtmosphere() {
         static_cast<int>(center.x),
         static_cast<int>(center.y),
         roundedOuterRadius,
-        Fade(Color{116, 202, 255, 255}, 0.08f * shellAlphaScale),
+        Fade(Color{114, 228, 255, 255}, 0.10f * shellAlphaScale),
         Fade(BLANK, 0.0f)
     );
 
@@ -271,7 +271,7 @@ void drawPlanetAtmosphere() {
         static_cast<int>(center.x),
         static_cast<int>(center.y),
         cornerRadius + atmosphereThickness * 0.45f,
-        Fade(Color{196, 245, 255, 255}, 0.07f * shellAlphaScale),
+        Fade(Color{255, 240, 186, 255}, 0.09f * shellAlphaScale),
         Fade(BLANK, 0.0f)
     );
 
@@ -279,7 +279,7 @@ void drawPlanetAtmosphere() {
         static_cast<int>(center.x),
         static_cast<int>(center.y),
         cornerRadius + atmosphereThickness * 0.72f,
-        Fade(Color{136, 224, 255, 255}, 0.035f * shellAlphaScale),
+        Fade(Color{255, 164, 240, 255}, 0.05f * shellAlphaScale),
         Fade(BLANK, 0.0f)
     );
 }
@@ -342,6 +342,10 @@ void Game::update(float dt) {
 
     updateMissiles(dt);
     updateExplosions(dt);
+
+    for (Player& player : players_) {
+        player.damageFlash = std::max(0.0f, player.damageFlash - dt * 2.4f);
+    }
 
     for (const Player& player : players_) {
         if (player.health <= 0) {
@@ -565,6 +569,20 @@ bool Game::collectBlockResource(Player& player, BlockType type) {
     return false;
 }
 
+void Game::applyDamage(Player& player, int damage, int sourceOwnerId) {
+    if (damage <= 0 || player.health <= 0) {
+        return;
+    }
+
+    player.health = std::max(0, player.health - damage);
+    player.damageFlash = 1.0f;
+
+    // Friendly fire still hurts, but enemy hits get a slightly punchier response.
+    if (sourceOwnerId != player.id) {
+        player.damageFlash = 1.2f;
+    }
+}
+
 bool Game::spend(Player& player, int fuelCost, int metalCost) {
     if (player.fuel < fuelCost || player.metal < metalCost) {
         return false;
@@ -636,8 +654,9 @@ void Game::handlePlace(Player& player) {
             break;
         }
         case ToolType::Armour: {
-            Vec3i target = buildCellForPlayer(player);
-            if (!world_.inBounds(target) || !world_.isAir(target)) {
+            Vec3i target = wallPlacementCell(player);
+            Block targetBlock = world_.get(target);
+            if (!world_.inBounds(target) || targetBlock.type != BlockType::PlayerWall || targetBlock.ownerId != player.id) {
                 return;
             }
             if (spend(player, 0, kArmourCost)) {
@@ -760,6 +779,47 @@ void Game::updateMissiles(float dt) {
     }
 }
 
+bool Game::wallResistsExplosion(const Vec3i& cell) const {
+    Block block = world_.get(cell);
+    if (block.type != BlockType::PlayerWall && block.type != BlockType::ArmourBlock) {
+        return false;
+    }
+
+    static std::mt19937 rng(8675309);
+    std::uniform_real_distribution<float> roll(0.0f, 1.0f);
+    float resistChance = block.type == BlockType::ArmourBlock ? 0.85f : 0.5f;
+    return roll(rng) < resistChance;
+}
+
+float Game::wallDamageReductionBetween(const Vec3& from, const Vec3& to) const {
+    Vec3 delta = to - from;
+    float dist = length(delta);
+    if (dist <= 0.001f) {
+        return 1.0f;
+    }
+
+    Vec3 dir = delta / dist;
+    const int samples = std::max(4, static_cast<int>(std::ceil(dist * 8.0f)));
+    for (int i = 1; i < samples; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(samples);
+        Vec3 probe = from + dir * (dist * t);
+        Vec3i cell{
+            static_cast<int>(std::floor(probe.x)),
+            static_cast<int>(std::floor(probe.y)),
+            world_.sliceZ()
+        };
+        Block block = world_.get(cell);
+        if (block.type == BlockType::ArmourBlock) {
+            return 0.25f;
+        }
+        if (block.type == BlockType::PlayerWall) {
+            return 0.5f;
+        }
+    }
+
+    return 1.0f;
+}
+
 void Game::explodeAt(const Vec3& position, float radius, int ownerId) {
     Vec3 outward = normalize(position - world_.center());
     if (length(outward) < 0.001f) {
@@ -772,6 +832,10 @@ void Game::explodeAt(const Vec3& position, float radius, int ownerId) {
             Vec3i cell{x, y, world_.sliceZ()};
             Vec3 cellCenter = toVec3(cell) + Vec3{0.5f, 0.5f, 0.0f};
             if (distance(cellCenter, position) <= radius) {
+                Block block = world_.get(cell);
+                if ((block.type == BlockType::PlayerWall || block.type == BlockType::ArmourBlock) && wallResistsExplosion(cell)) {
+                    continue;
+                }
                 world_.set(cell, BlockType::Air);
             }
         }
@@ -785,7 +849,8 @@ void Game::explodeAt(const Vec3& position, float radius, int ownerId) {
             if (player.id != ownerId) {
                 damage += 10;
             }
-            player.health -= std::max(8, damage);
+            damage = static_cast<int>(std::round(static_cast<float>(std::max(8, damage)) * wallDamageReductionBetween(position, playerPos)));
+            applyDamage(player, damage, ownerId);
         }
     }
 }
@@ -885,7 +950,7 @@ std::string Game::contextualCostText(const Player& player) const {
         case ToolType::Wall:
             return "cost: 1 metal";
         case ToolType::Armour:
-            return "cost: 4 metal";
+            return "cost: 4 metal (upgrade wall)";
         case ToolType::Silo:
             return currentPhase() == TurnPhase::MineBuild
                 ? "cost: 30 metal"
@@ -940,7 +1005,7 @@ void Game::drawWorldSlice() const {
             Color c = colorForBlock(block);
             if (block.type == BlockType::Air) {
                 float vignette = (std::sin((x + y) * 0.55f) + 1.0f) * 0.5f;
-                DrawRectangleRec(cellRect, lerpColor(Color{8, 12, 20, 255}, Color{12, 18, 28, 255}, vignette));
+                DrawRectangleRec(cellRect, lerpColor(Color{13, 20, 33, 255}, Color{18, 28, 44, 255}, vignette));
                 DrawRectangleRec(
                     Rectangle{cellRect.x + cellRect.width * 0.15f, cellRect.y + cellRect.height * 0.15f, cellRect.width * 0.12f, cellRect.height * 0.12f},
                     Fade(SKYBLUE, 0.035f)
@@ -948,8 +1013,8 @@ void Game::drawWorldSlice() const {
                 continue;
             }
 
-            Color topGlow = scaleColor(c, 1.08f);
-            Color baseShade = scaleColor(c, 0.76f);
+            Color topGlow = scaleColor(c, 1.16f);
+            Color baseShade = scaleColor(c, 0.80f);
             DrawRectangleGradientV(
                 static_cast<int>(cellRect.x),
                 static_cast<int>(cellRect.y),
@@ -960,7 +1025,7 @@ void Game::drawWorldSlice() const {
             );
 
             if (block.type == BlockType::FuelOre || block.type == BlockType::MetalOre) {
-                Color aura = block.type == BlockType::FuelOre ? Fade(GOLD, 0.16f) : Fade(SKYBLUE, 0.18f);
+                Color aura = block.type == BlockType::FuelOre ? Fade(Color{255, 214, 82, 255}, 0.24f) : Fade(Color{92, 232, 255, 255}, 0.26f);
                 DrawRectangleRec(
                     Rectangle{cellRect.x - 1.5f, cellRect.y - 1.5f, cellRect.width + 3.0f, cellRect.height + 3.0f},
                     aura
@@ -968,24 +1033,41 @@ void Game::drawWorldSlice() const {
                 DrawCircleV(
                     {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
                     cellRect.width * 0.18f,
-                    block.type == BlockType::FuelOre ? Fade(RAYWHITE, 0.55f) : Fade(WHITE, 0.6f)
+                    block.type == BlockType::FuelOre ? Fade(RAYWHITE, 0.75f) : Fade(WHITE, 0.72f)
                 );
                 DrawCircleV(
                     {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
                     cellRect.width * 0.34f,
-                    block.type == BlockType::FuelOre ? Fade(GOLD, 0.14f) : Fade(SKYBLUE, 0.16f)
+                    block.type == BlockType::FuelOre ? Fade(GOLD, 0.20f) : Fade(SKYBLUE, 0.22f)
                 );
             }
 
             if (block.type == BlockType::PlayerWall || block.type == BlockType::ArmourBlock || block.type == BlockType::MissileSilo) {
                 DrawRectangleRec(
                     Rectangle{cellRect.x + 1.0f, cellRect.y + 1.0f, cellRect.width - 2.0f, cellRect.height - 2.0f},
-                    Fade(WHITE, 0.06f)
+                    Fade(WHITE, 0.10f)
                 );
                 DrawRectangleRec(
                     Rectangle{cellRect.x + 2.0f, cellRect.y + 2.0f, cellRect.width - 4.0f, cellRect.height * 0.22f},
-                    Fade(WHITE, 0.08f)
+                    Fade(WHITE, 0.14f)
                 );
+                DrawRectangleRec(
+                    Rectangle{cellRect.x - 1.0f, cellRect.y - 1.0f, cellRect.width + 2.0f, cellRect.height + 2.0f},
+                    Fade(c, 0.10f)
+                );
+                if (block.type == BlockType::ArmourBlock) {
+                    DrawRectangleLinesEx(
+                        Rectangle{cellRect.x + 3.0f, cellRect.y + 3.0f, cellRect.width - 6.0f, cellRect.height - 6.0f},
+                        2.0f,
+                        Fade(Color{255, 244, 180, 255}, 0.55f)
+                    );
+                    DrawLineEx(
+                        {cellRect.x + 4.0f, cellRect.y + cellRect.height * 0.5f},
+                        {cellRect.x + cellRect.width - 4.0f, cellRect.y + cellRect.height * 0.5f},
+                        2.0f,
+                        Fade(Color{255, 244, 180, 255}, 0.5f)
+                    );
+                }
             }
 
             DrawRectangle(
@@ -993,9 +1075,9 @@ void Game::drawWorldSlice() const {
                 static_cast<int>(cellRect.y),
                 static_cast<int>(cellRect.width),
                 2,
-                Fade(WHITE, 0.11f)
+                Fade(WHITE, 0.18f)
             );
-            DrawRectangleLinesEx(cellRect, 1.0f, Fade(BLACK, 0.22f));
+            DrawRectangleLinesEx(cellRect, 1.0f, Fade(BLACK, 0.16f));
             DrawRectangleRec(
                 Rectangle{cellRect.x + 1.0f, cellRect.y + cellRect.height - 3.0f, cellRect.width - 2.0f, 2.0f},
                 Fade(BLACK, 0.10f)
@@ -1090,12 +1172,37 @@ void Game::drawPlayers() const {
                 );
                 DrawRectangleRec(
                     ghostRect,
-                    Fade(focus, 0.12f)
+                    Fade(focus, 0.20f)
                 );
                 DrawRectangleLinesEx(ghostRect, 1.0f, Fade(WHITE, 0.45f));
                 DrawRectangleRec(
                     Rectangle{ghostRect.x, ghostRect.y, ghostRect.width, 3.0f},
-                    Fade(WHITE, 0.12f)
+                    Fade(WHITE, 0.20f)
+                );
+                DrawCircleV(
+                    {targetTopLeft.x + cell * 0.5f, targetTopLeft.y + cell * 0.5f},
+                    cell * 0.36f,
+                    Fade(focus, 0.10f)
+                );
+            }
+        }
+
+        if (player.tool == ToolType::Armour) {
+            Vec3i target = wallPlacementCell(player);
+            Block targetBlock = world_.get(target);
+            if (world_.inBounds(target) && targetBlock.type == BlockType::PlayerWall && targetBlock.ownerId == player.id) {
+                Vector2 targetTopLeft = cellTopLeft(target);
+                Color focus = player.id == 0 ? Fade(Color{255, 239, 150, 255}, 0.88f) : Fade(Color{255, 214, 120, 255}, 0.88f);
+                DrawRectangleLinesEx(
+                    Rectangle{targetTopLeft.x - 1.0f, targetTopLeft.y - 1.0f, cell + 2.0f, cell + 2.0f},
+                    2.0f,
+                    focus
+                );
+                DrawCircleLines(
+                    static_cast<int>(targetTopLeft.x + cell * 0.5f),
+                    static_cast<int>(targetTopLeft.y + cell * 0.5f),
+                    cell * 0.28f,
+                    focus
                 );
             }
         }
@@ -1103,15 +1210,20 @@ void Game::drawPlayers() const {
         Vector2 topLeft = cellTopLeft(player.position);
         Vector2 p{topLeft.x + cell * 0.5f, topLeft.y + cell * 0.5f};
         Color tint = player.id == 0 ? Color{108, 216, 255, 255} : Color{255, 142, 142, 255};
+        tint = lerpColor(tint, WHITE, clampf(player.damageFlash * 0.55f, 0.0f, 0.55f));
         float radius = std::max(5.0f, cell * 0.33f);
         float pulse = 0.88f + 0.12f * std::sin(GetTime() * 4.6f + player.id * 1.4f);
-        DrawCircleV(p, radius * 2.4f, Fade(tint, 0.08f * pulse));
-        DrawCircleV(p, radius * 1.8f, Fade(tint, 0.12f));
+        DrawCircleV(p, radius * 2.6f, Fade(tint, 0.10f * pulse));
+        DrawCircleV(p, radius * 1.95f, Fade(tint, 0.18f));
+        DrawCircleV(p, radius * 3.2f, Fade(tint, 0.05f * pulse));
         DrawCircleV(p, radius, tint);
-        DrawCircleV({p.x, p.y + radius * 0.1f}, radius * 0.72f, scaleColor(tint, 0.86f));
+        DrawCircleV({p.x, p.y + radius * 0.1f}, radius * 0.72f, scaleColor(tint, 0.92f));
         DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), radius, WHITE);
-        DrawCircleV({p.x - radius * 0.25f, p.y - radius * 0.3f}, radius * 0.24f, Fade(WHITE, 0.55f));
+        DrawCircleV({p.x - radius * 0.25f, p.y - radius * 0.3f}, radius * 0.24f, Fade(WHITE, 0.7f));
         DrawCircleV({p.x + radius * 0.16f, p.y + radius * 0.14f}, radius * 0.12f, Fade(BLACK, 0.18f));
+        if (player.damageFlash > 0.0f) {
+            DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), radius * (1.7f + player.damageFlash * 0.7f), Fade(WHITE, 0.75f * player.damageFlash));
+        }
     }
 }
 
@@ -1129,11 +1241,12 @@ void Game::drawMissiles() const {
             };
             DrawCircleV(tail, 2.0f + trail, Fade(tint, 0.06f * trail));
         }
-        DrawCircleV(p, 20.0f, Fade(tint, 0.07f));
-        DrawCircleV(p, 14.0f, Fade(tint, 0.12f));
+        DrawCircleV(p, 24.0f, Fade(tint, 0.08f));
+        DrawCircleV(p, 16.0f, Fade(tint, 0.14f));
+        DrawCircleV(p, 30.0f, Fade(tint, 0.04f));
         DrawCircleV(p, 6.5f, tint);
         DrawCircleV(p, 3.0f, WHITE);
-        DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), 8.5f, Fade(WHITE, 0.32f));
+        DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), 8.5f, Fade(WHITE, 0.42f));
     }
 }
 
@@ -1157,9 +1270,10 @@ void Game::drawExplosions() const {
         Vector2 capCenter{p.x + dir.x * plumeRise * 1.02f, p.y + dir.y * plumeRise * 1.02f};
 
         DrawCircleV(p, radiusPx * (0.78f + life * 0.22f), Fade(WHITE, 1.15f * e.ttl));
-        DrawCircleV(p, radiusPx * (2.45f + life * 0.70f), Fade(Color{255, 148, 56, 255}, 0.42f * e.ttl));
-        DrawCircleV(p, radiusPx * (3.55f + life * 1.00f), Fade(Color{255, 208, 120, 255}, 0.18f * e.ttl));
-        DrawCircleV(p, radiusPx * (4.85f + life * 1.35f), Fade(Color{170, 220, 255, 255}, 0.08f * e.ttl));
+        DrawCircleV(p, radiusPx * (2.45f + life * 0.70f), Fade(Color{255, 148, 56, 255}, 0.52f * e.ttl));
+        DrawCircleV(p, radiusPx * (3.55f + life * 1.00f), Fade(Color{255, 208, 120, 255}, 0.24f * e.ttl));
+        DrawCircleV(p, radiusPx * (4.85f + life * 1.35f), Fade(Color{170, 220, 255, 255}, 0.14f * e.ttl));
+        DrawCircleV(p, radiusPx * (6.10f + life * 1.55f), Fade(Color{255, 110, 216, 255}, 0.07f * e.ttl));
         DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), radiusPx * (3.10f + life * 0.40f), Fade(Color{255, 246, 188, 255}, 0.72f * e.ttl));
 
         Vector2 stemA{p.x + perp.x * radiusPx * 0.40f, p.y + perp.y * radiusPx * 0.40f};
@@ -1218,16 +1332,17 @@ void Game::drawPreviewArc(const Player& player) const {
         float wobbleY = std::cos((i + 1) * 1.3f + player.id) * jitter;
         Vector2 p = worldPointToScreen(points[i]);
         Color c = player.id == 0 ? Fade(SKYBLUE, alpha) : Fade(PINK, alpha);
-        DrawCircleV({p.x + wobbleX, p.y + wobbleY}, 5.2f - t * 2.1f, Fade(c, 0.20f));
+        DrawCircleV({p.x + wobbleX, p.y + wobbleY}, 5.8f - t * 2.2f, Fade(c, 0.24f));
         DrawCircleV({p.x + wobbleX, p.y + wobbleY}, 3.5f - t * 1.5f, c);
     }
 }
 
 void Game::drawHud() const {
     int hudX = GetScreenWidth() - 344;
-    DrawRectangleRounded(Rectangle{static_cast<float>(hudX), 24.0f, 320.0f, 730.0f}, 0.03f, 8, Fade(Color{7, 11, 20, 255}, 0.9f));
-    DrawRectangleRoundedLines(Rectangle{static_cast<float>(hudX), 24.0f, 320.0f, 730.0f}, 0.03f, 8, Fade(Color{188, 224, 255, 255}, 0.14f));
-    DrawRectangleGradientV(hudX + 1, 25, 318, 90, Fade(Color{18, 34, 52, 255}, 0.7f), Fade(BLANK, 0.0f));
+    DrawRectangleRounded(Rectangle{static_cast<float>(hudX), 24.0f, 320.0f, 730.0f}, 0.03f, 8, Fade(Color{10, 14, 30, 255}, 0.88f));
+    DrawRectangleRoundedLines(Rectangle{static_cast<float>(hudX), 24.0f, 320.0f, 730.0f}, 0.03f, 8, Fade(Color{188, 224, 255, 255}, 0.20f));
+    DrawRectangleGradientV(hudX + 1, 25, 318, 90, Fade(Color{40, 74, 112, 255}, 0.78f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(hudX + 220, 86, 120.0f, Fade(Color{255, 200, 92, 80}, 0.12f), Fade(BLANK, 0.0f));
 
     DrawText("INTERPLANETARY", hudX + 18, 24, 28, RAYWHITE);
 
@@ -1246,24 +1361,25 @@ void Game::drawHud() const {
     }
 
     int y = 224;
-    const int cardHeight = 226;
+    const int cardHeight = 242;
     for (const Player& player : players_) {
         Color tint = player.id == 0 ? Color{108, 216, 255, 255} : Color{255, 142, 142, 255};
-        DrawRectangleRounded(Rectangle{static_cast<float>(hudX + 14), static_cast<float>(y - 8), 292.0f, static_cast<float>(cardHeight)}, 0.025f, 6, Fade(tint, 0.045f));
-        DrawRectangleGradientV(hudX + 14, y - 8, 292, 54, Fade(tint, 0.06f), Fade(BLANK, 0.0f));
+        DrawRectangleRounded(Rectangle{static_cast<float>(hudX + 14), static_cast<float>(y - 8), 292.0f, static_cast<float>(cardHeight)}, 0.025f, 6, Fade(tint, 0.07f));
+        DrawRectangleGradientV(hudX + 14, y - 8, 292, 54, Fade(tint, 0.12f), Fade(BLANK, 0.0f));
+        DrawRectangleRoundedLines(Rectangle{static_cast<float>(hudX + 14), static_cast<float>(y - 8), 292.0f, static_cast<float>(cardHeight)}, 0.025f, 6, Fade(tint, 0.12f));
         DrawText(player.name.c_str(), hudX + 18, y, 24, tint);
-        std::snprintf(line, sizeof(line), "HP %d", player.health);
+        std::snprintf(line, sizeof(line), "HP %d / %d", player.health, player.maxHealth);
         DrawText(line, hudX + 18, y + 32, 20, WHITE);
         std::snprintf(line, sizeof(line), "Fuel %d", player.fuel);
-        DrawText(line, hudX + 18, y + 58, 20, WHITE);
+        DrawText(line, hudX + 18, y + 62, 20, WHITE);
         std::snprintf(line, sizeof(line), "Metal %d", player.metal);
-        DrawText(line, hudX + 18, y + 82, 20, WHITE);
+        DrawText(line, hudX + 18, y + 86, 20, WHITE);
         std::snprintf(line, sizeof(line), "Tool %s", toolName(player.tool));
-        DrawText(line, hudX + 18, y + 108, 20, WHITE);
+        DrawText(line, hudX + 18, y + 112, 20, WHITE);
         std::snprintf(line, sizeof(line), "Aim %.0f  Power %.0f", player.aimAngleDeg, player.launchPower);
-        DrawText(line, hudX + 18, y + 134, 18, Fade(RAYWHITE, 0.8f));
-        DrawText(predictedImpactText(player).c_str(), hudX + 18, y + 158, 18, Fade(RAYWHITE, 0.8f));
-        DrawText(contextualCostText(player).c_str(), hudX + 18, y + 182, 18, GOLD);
+        DrawText(line, hudX + 18, y + 138, 18, Fade(RAYWHITE, 0.8f));
+        DrawText(predictedImpactText(player).c_str(), hudX + 18, y + 162, 18, Fade(RAYWHITE, 0.8f));
+        DrawText(contextualCostText(player).c_str(), hudX + 18, y + 186, 18, GOLD);
         if (currentPhase() == TurnPhase::MineBuild && player.tool == ToolType::Mine) {
             Vec3i target = frontCell(player);
             Block targetBlock = world_.get(target);
@@ -1271,14 +1387,12 @@ void Game::drawHud() const {
                 float totalTime = mineTimeForBlock(targetBlock.type);
                 float pct = totalTime > 0.0f ? clampf(player.mining.progress / totalTime, 0.0f, 1.0f) : 0.0f;
                 std::snprintf(line, sizeof(line), "Mining %d,%d  %d%%", target.x, target.y, static_cast<int>(pct * 100.0f));
-                DrawText(line, hudX + 18, y + 204, 18, WHITE);
-                DrawRectangle(hudX + 18, y + 228, 180, 10, Fade(RAYWHITE, 0.18f));
-                DrawRectangle(hudX + 18, y + 228, static_cast<int>(180.0f * pct), 10, tint);
+                DrawText(line, hudX + 18, y + 210, 18, WHITE);
             } else {
-                DrawText("Mining: face a solid block", hudX + 18, y + 204, 18, WHITE);
+                DrawText("Mining: face a solid block", hudX + 18, y + 210, 18, WHITE);
             }
         } else if (currentPhase() == TurnPhase::MineBuild) {
-            DrawText("Mining is manual only", hudX + 18, y + 204, 18, WHITE);
+            DrawText("Mining is manual only", hudX + 18, y + 210, 18, WHITE);
         }
         y += cardHeight + 14;
     }
@@ -1295,8 +1409,11 @@ void Game::drawHud() const {
 
 void Game::drawHelp() const {
     int helpWidth = GetScreenWidth() - 420;
-    DrawRectangleRounded(Rectangle{34.0f, static_cast<float>(GetScreenHeight() - 108), static_cast<float>(helpWidth), 82.0f}, 0.03f, 8, Fade(Color{7, 11, 20, 255}, 0.85f));
-    DrawRectangleRoundedLines(Rectangle{34.0f, static_cast<float>(GetScreenHeight() - 108), static_cast<float>(helpWidth), 82.0f}, 0.03f, 8, Fade(Color{188, 224, 255, 255}, 0.12f));
-    DrawText("P1  WASD move  Q/E tools  F use  R place  T/G angle  Y/H power", 48, GetScreenHeight() - 118, 20, Color{140, 225, 255, 255});
-    DrawText("P2  Arrows move  ,/. tools  O use  P place  I/K angle  U/J power", 48, GetScreenHeight() - 90, 20, Color{255, 168, 168, 255});
+    const float helpY = static_cast<float>(GetScreenHeight() - 126);
+    const float helpHeight = 96.0f;
+    DrawRectangleRounded(Rectangle{34.0f, helpY, static_cast<float>(helpWidth), helpHeight}, 0.03f, 8, Fade(Color{10, 14, 30, 255}, 0.84f));
+    DrawRectangleRoundedLines(Rectangle{34.0f, helpY, static_cast<float>(helpWidth), helpHeight}, 0.03f, 8, Fade(Color{188, 224, 255, 255}, 0.18f));
+    DrawRectangleGradientV(35, static_cast<int>(helpY + 1.0f), helpWidth - 2, 28, Fade(Color{60, 132, 220, 255}, 0.10f), Fade(BLANK, 0.0f));
+    DrawText("P1  WASD move  Q/E tools  F use  R place  T/G angle  Y/H power", 48, static_cast<int>(helpY + 18.0f), 20, Color{140, 225, 255, 255});
+    DrawText("P2  Arrows move  ,/. tools  O use  P place  I/K angle  U/J power", 48, static_cast<int>(helpY + 50.0f), 20, Color{255, 168, 168, 255});
 }

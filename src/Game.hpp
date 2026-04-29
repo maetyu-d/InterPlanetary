@@ -30,6 +30,7 @@ private:
     Vec3i wallPlacementCell(const Player& player) const;
     float mineTimeForBlock(BlockType type) const;
     bool collectBlockResource(Player& player, BlockType type);
+    void applyDamage(Player& player, int damage, int sourceOwnerId);
     bool spend(Player& player, int fuelCost, int metalCost);
     bool canPlayerStand(const Player& player, const Vec3i& cell) const;
 
@@ -38,6 +39,8 @@ private:
     std::optional<Vec3i> findNearbyOwnedSilo(const Player& player) const;
     void updateMissiles(float dt);
     void explodeAt(const Vec3& position, float radius, int ownerId);
+    bool wallResistsExplosion(const Vec3i& cell) const;
+    float wallDamageReductionBetween(const Vec3& from, const Vec3& to) const;
     void updateExplosions(float dt);
     Vec3i initialSiloPosition(int playerId) const;
     std::vector<Vec3> predictArcPartial(Missile missile, const Wind& wind, float dt, int totalSamples) const;

@@ -130,11 +130,13 @@ struct Player {
     Vec3i facing{1, 0, 0};
     int fuel = 24;
     int metal = 36;
+    int maxHealth = 100;
     int health = 100;
     ToolType tool = ToolType::Mine;
     float moveCooldown = 0.0f;
     float aimAngleDeg = 42.0f;
     float launchPower = 10.5f;
+    float damageFlash = 0.0f;
     MineAction mining{};
 };
 
