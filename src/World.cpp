@@ -68,8 +68,15 @@ Vec3 World::center() const {
 
 void World::generate() {
     static std::mt19937 rng(1337);
-    std::uniform_int_distribution<int> sizeStepDist(0, (kMaxPlanetSize - kMinPlanetSize) / 2);
-    planetSize_ = kMinPlanetSize + sizeStepDist(rng) * 2;
+    constexpr int kSizeSteps = (kMaxPlanetSize - kMinPlanetSize) / 2;
+    std::uniform_real_distribution<float> sizeBiasRoll(0.0f, 1.0f);
+    // Square the roll so smaller planets show up more often while larger ones remain possible.
+    float biasedStep = sizeBiasRoll(rng);
+    int sizeStep = static_cast<int>(biasedStep * biasedStep * static_cast<float>(kSizeSteps + 1));
+    if (sizeStep > kSizeSteps) {
+        sizeStep = kSizeSteps;
+    }
+    planetSize_ = kMinPlanetSize + sizeStep * 2;
     planetMin_ = (kMaxPlanetSize - planetSize_) / 2;
     planetMax_ = planetMin_ + planetSize_ - 1;
 

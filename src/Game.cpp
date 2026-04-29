@@ -138,7 +138,7 @@ float activePlanetCornerRadius() {
 }
 
 float atmosphereThicknessForPlanet(float planetSpan) {
-    return clampf(planetSpan * 0.22f, 52.0f, 108.0f);
+    return clampf(planetSpan * 0.16f, 24.0f, 82.0f);
 }
 
 Vector2 cellTopLeft(const Vec3i& p) {
@@ -165,6 +165,8 @@ void drawNebulaBackdrop() {
     DrawCircleGradient(GetScreenWidth() / 2 - 140, 140, 260.0f, Fade(Color{41, 112, 175, 90}, 0.28f), Fade(BLANK, 0.0f));
     DrawCircleGradient(GetScreenWidth() / 2 + 60, GetScreenHeight() - 120, 340.0f, Fade(Color{16, 78, 123, 70}, 0.24f), Fade(BLANK, 0.0f));
     DrawCircleGradient(210, GetScreenHeight() / 2 + 90, 220.0f, Fade(Color{164, 93, 68, 55}, 0.22f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(GetScreenWidth() / 2 + 10, GetScreenHeight() / 2 - 140, 300.0f, Fade(Color{49, 140, 220, 80}, 0.16f), Fade(BLANK, 0.0f));
+    DrawCircleGradient(GetScreenWidth() / 2 - 260, GetScreenHeight() - 240, 260.0f, Fade(Color{194, 98, 78, 55}, 0.12f), Fade(BLANK, 0.0f));
 
     for (int i = 0; i < 120; ++i) {
         float x = static_cast<float>((i * 97) % GetScreenWidth());
@@ -181,13 +183,13 @@ void drawOrbitalBeltField() {
     Rectangle planet = activePlanetRect();
     float cornerRadius = activePlanetCornerRadius();
     float atmosphereThickness = atmosphereThicknessForPlanet(planet.width);
-    float beltClearance = clampf(planet.width * 0.11f, 34.0f, 60.0f);
+    float beltClearance = clampf(planet.width * 0.12f, 20.0f, 48.0f);
     float baseRadius = cornerRadius + atmosphereThickness + beltClearance;
     float baseRx = baseRadius;
     float baseRy = baseRadius * 0.88f;
 
     for (int band = 0; band < 3; ++band) {
-        float bandSpacing = clampf(planet.width * 0.06f, 18.0f, 30.0f);
+        float bandSpacing = clampf(planet.width * 0.055f, 12.0f, 24.0f);
         float wobble = std::sin(t * (0.22f + band * 0.07f)) * (6.0f + band * 2.5f);
         float rx = baseRx + band * bandSpacing + wobble;
         float ry = baseRy + band * (bandSpacing * 0.72f) + wobble * 0.5f;
@@ -210,6 +212,7 @@ void drawOrbitalBeltField() {
         Vector2 p{center.x + std::cos(angle) * rx, center.y + std::sin(angle) * ry};
         float radius = 1.5f + (rock % 3);
         Color dust = rock % 4 == 0 ? Fade(GOLD, 0.42f) : Fade(RAYWHITE, 0.22f);
+        DrawCircleV(p, radius * 2.4f, Fade(dust, 0.08f));
         DrawCircleV(p, radius, dust);
     }
 }
@@ -221,10 +224,12 @@ void drawPlanetAtmosphere() {
     float atmosphereThickness = atmosphereThicknessForPlanet(planet.width);
     float roundedOuterRadius = cornerRadius + atmosphereThickness;
     float shellSpacing = atmosphereThickness / 9.0f;
+    float sizeT = clampf((planet.width - 280.0f) / 220.0f, 0.0f, 1.0f);
+    float shellAlphaScale = 0.45f + sizeT * 0.4f;
 
     for (int shell = 0; shell < 10; ++shell) {
         float expand = shellSpacing * (shell + 1);
-        float alpha = 0.12f * (1.0f - static_cast<float>(shell) / 10.0f);
+        float alpha = 0.12f * shellAlphaScale * (1.0f - static_cast<float>(shell) / 10.0f);
         float roundness = 0.035f + 0.02f * shell;
         Color shellColor = lerpColor(Color{114, 186, 255, 255}, Color{189, 247, 255, 255}, static_cast<float>(shell) / 9.0f);
         DrawRectangleRounded(
@@ -243,7 +248,7 @@ void drawPlanetAtmosphere() {
     for (int layer = 0; layer < 24; ++layer) {
         float t = static_cast<float>(layer) / 23.0f;
         float radius = cornerRadius + atmosphereThickness * (0.18f + t * 0.92f);
-        float alpha = 0.11f * (1.0f - t * 0.72f);
+        float alpha = 0.11f * shellAlphaScale * (1.0f - t * 0.72f);
         Color glow = lerpColor(Color{116, 192, 255, 255}, Color{195, 255, 249, 255}, t);
         DrawCircleGradient(
             static_cast<int>(center.x),
@@ -258,7 +263,7 @@ void drawPlanetAtmosphere() {
         static_cast<int>(center.x),
         static_cast<int>(center.y),
         roundedOuterRadius,
-        Fade(Color{116, 202, 255, 255}, 0.10f),
+        Fade(Color{116, 202, 255, 255}, 0.08f * shellAlphaScale),
         Fade(BLANK, 0.0f)
     );
 
@@ -266,7 +271,15 @@ void drawPlanetAtmosphere() {
         static_cast<int>(center.x),
         static_cast<int>(center.y),
         cornerRadius + atmosphereThickness * 0.45f,
-        Fade(Color{196, 245, 255, 255}, 0.09f),
+        Fade(Color{196, 245, 255, 255}, 0.07f * shellAlphaScale),
+        Fade(BLANK, 0.0f)
+    );
+
+    DrawCircleGradient(
+        static_cast<int>(center.x),
+        static_cast<int>(center.y),
+        cornerRadius + atmosphereThickness * 0.72f,
+        Fade(Color{136, 224, 255, 255}, 0.035f * shellAlphaScale),
         Fade(BLANK, 0.0f)
     );
 }
@@ -440,20 +453,30 @@ void Game::handleMovement(Player& player, int dx, int dy) {
 }
 
 bool Game::canPlayerStand(const Player& player, const Vec3i& cell) const {
-    if (world_.inBounds(cell) && world_.isAir(cell)) {
-        return true;
-    }
-
     if (cell.y < world_.planetMin() || cell.y > world_.planetMax() || cell.z != world_.sliceZ()) {
         return false;
     }
 
-    if (player.id == 0 && cell.x == world_.planetMin() - 1) {
+    const int exteriorLaneX = player.id == 0 ? world_.planetMin() - 1 : world_.planetMax() + 1;
+    const bool onExteriorLane = player.position.x == exteriorLaneX;
+    Block cellBlock = world_.inBounds(cell) ? world_.get(cell) : Block{BlockType::Air, -1};
+
+    if (onExteriorLane) {
+        if (cell.x == exteriorLaneX) {
+            return cellBlock.type == BlockType::Air;
+        }
+
+        if (!world_.inBounds(cell) || cellBlock.type != BlockType::Air) {
+            return false;
+        }
+
+        return cell.x >= world_.planetMin() && cell.x <= world_.planetMax();
+    }
+
+    if (world_.inBounds(cell) && cellBlock.type == BlockType::Air) {
         return true;
     }
-    if (player.id == 1 && cell.x == world_.planetMax() + 1) {
-        return true;
-    }
+
     return false;
 }
 
@@ -485,6 +508,28 @@ Vec3i Game::buildCellForPlayer(const Player& player) const {
         return {world_.planetMax(), player.position.y, world_.sliceZ()};
     }
     return player.position;
+}
+
+Vec3i Game::wallPlacementCell(const Player& player) const {
+    Vec3i facing = player.facing;
+    if (facing == Vec3i{0, 0, 0}) {
+        facing = drillDirectionForPlayer(player.id);
+    }
+
+    if (player.id == 0 && player.position.x == world_.planetMin() - 1) {
+        if (facing.x > 0) {
+            return {world_.planetMin(), player.position.y, world_.sliceZ()};
+        }
+        return player.position + facing;
+    }
+    if (player.id == 1 && player.position.x == world_.planetMax() + 1) {
+        if (facing.x < 0) {
+            return {world_.planetMax(), player.position.y, world_.sliceZ()};
+        }
+        return player.position + facing;
+    }
+
+    return player.position + facing;
 }
 
 float Game::mineTimeForBlock(BlockType type) const {
@@ -565,28 +610,51 @@ void Game::handleUse(Player& player, bool pressed, bool held, float dt) {
 }
 
 void Game::handlePlace(Player& player) {
-    Vec3i target = buildCellForPlayer(player);
-    if (!world_.inBounds(target) || !world_.isAir(target)) {
-        return;
-    }
-
     TurnPhase phase = currentPhase();
     switch (player.tool) {
-        case ToolType::Wall:
+        case ToolType::Wall: {
+            Vec3i target = wallPlacementCell(player);
+            const bool onExteriorLane =
+                (player.id == 0 && player.position.x == world_.planetMin() - 1) ||
+                (player.id == 1 && player.position.x == world_.planetMax() + 1);
+            const bool isOwnFaceBlock =
+                (player.id == 0 && target.x == world_.planetMin()) ||
+                (player.id == 1 && target.x == world_.planetMax());
+            const bool canAttachToFace = onExteriorLane && isOwnFaceBlock;
+
+            if (!world_.inBounds(target)) {
+                return;
+            }
+
+            if (!world_.isAir(target) && !canAttachToFace) {
+                return;
+            }
+
             if (spend(player, 0, kWallCost)) {
                 world_.set(target, BlockType::PlayerWall, player.id);
             }
             break;
-        case ToolType::Armour:
+        }
+        case ToolType::Armour: {
+            Vec3i target = buildCellForPlayer(player);
+            if (!world_.inBounds(target) || !world_.isAir(target)) {
+                return;
+            }
             if (spend(player, 0, kArmourCost)) {
                 world_.set(target, BlockType::ArmourBlock, player.id);
             }
             break;
-        case ToolType::Silo:
+        }
+        case ToolType::Silo: {
+            Vec3i target = buildCellForPlayer(player);
+            if (!world_.inBounds(target) || !world_.isAir(target)) {
+                return;
+            }
             if (phase == TurnPhase::MineBuild && spend(player, 0, kSiloCost)) {
                 world_.set(target, BlockType::MissileSilo, player.id);
             }
             break;
+        }
         default:
             break;
     }
@@ -852,19 +920,31 @@ void Game::drawWorldSlice() const {
     drawOrbitalBeltField();
 
     float cell = worldCellSize();
-    Rectangle view = worldViewRect();
+    int drawMinX = std::max(0, world_.planetMin() - 2);
+    int drawMaxX = std::min(world_.sizeX() - 1, world_.planetMax() + 2);
+    int drawMinY = world_.planetMin();
+    int drawMaxY = world_.planetMax();
 
-    for (int y = 0; y < world_.sizeY(); ++y) {
-        for (int x = 0; x < world_.sizeX(); ++x) {
+    for (int y = drawMinY; y <= drawMaxY; ++y) {
+        for (int x = drawMinX; x <= drawMaxX; ++x) {
             Vec3i p{x, y, world_.sliceZ()};
-            Block block = world_.get(p);
             Vector2 topLeft = cellTopLeft(p);
-            Color c = colorForBlock(block);
             Rectangle cellRect{topLeft.x, topLeft.y, std::ceil(cell) - 1.0f, std::ceil(cell) - 1.0f};
+            bool isExteriorBand = x < world_.planetMin() || x > world_.planetMax();
+            Block block = world_.inBounds(p) ? world_.get(p) : Block{BlockType::Air, -1};
 
+            if (isExteriorBand && block.type == BlockType::Air) {
+                continue;
+            }
+
+            Color c = colorForBlock(block);
             if (block.type == BlockType::Air) {
                 float vignette = (std::sin((x + y) * 0.55f) + 1.0f) * 0.5f;
                 DrawRectangleRec(cellRect, lerpColor(Color{8, 12, 20, 255}, Color{12, 18, 28, 255}, vignette));
+                DrawRectangleRec(
+                    Rectangle{cellRect.x + cellRect.width * 0.15f, cellRect.y + cellRect.height * 0.15f, cellRect.width * 0.12f, cellRect.height * 0.12f},
+                    Fade(SKYBLUE, 0.035f)
+                );
                 continue;
             }
 
@@ -890,12 +970,21 @@ void Game::drawWorldSlice() const {
                     cellRect.width * 0.18f,
                     block.type == BlockType::FuelOre ? Fade(RAYWHITE, 0.55f) : Fade(WHITE, 0.6f)
                 );
+                DrawCircleV(
+                    {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.5f},
+                    cellRect.width * 0.34f,
+                    block.type == BlockType::FuelOre ? Fade(GOLD, 0.14f) : Fade(SKYBLUE, 0.16f)
+                );
             }
 
             if (block.type == BlockType::PlayerWall || block.type == BlockType::ArmourBlock || block.type == BlockType::MissileSilo) {
                 DrawRectangleRec(
                     Rectangle{cellRect.x + 1.0f, cellRect.y + 1.0f, cellRect.width - 2.0f, cellRect.height - 2.0f},
                     Fade(WHITE, 0.06f)
+                );
+                DrawRectangleRec(
+                    Rectangle{cellRect.x + 2.0f, cellRect.y + 2.0f, cellRect.width - 4.0f, cellRect.height * 0.22f},
+                    Fade(WHITE, 0.08f)
                 );
             }
 
@@ -907,6 +996,10 @@ void Game::drawWorldSlice() const {
                 Fade(WHITE, 0.11f)
             );
             DrawRectangleLinesEx(cellRect, 1.0f, Fade(BLACK, 0.22f));
+            DrawRectangleRec(
+                Rectangle{cellRect.x + 1.0f, cellRect.y + cellRect.height - 3.0f, cellRect.width - 2.0f, 2.0f},
+                Fade(BLACK, 0.10f)
+            );
         }
     }
 
@@ -929,6 +1022,11 @@ void Game::drawWorldSlice() const {
             cellRect.width * 0.13f,
             Fade(WHITE, 0.6f)
         );
+        DrawCircleV(
+            {cellRect.x + cellRect.width * 0.5f, cellRect.y + cellRect.height * 0.55f},
+            cellRect.width * 0.28f,
+            Fade(c, 0.18f)
+        );
     }
 }
 
@@ -941,10 +1039,63 @@ void Game::drawPlayers() const {
             if (world_.inBounds(target) && targetBlock.type != BlockType::Air) {
                 Vector2 targetTopLeft = cellTopLeft(target);
                 Color focus = player.id == 0 ? Fade(SKYBLUE, 0.85f) : Fade(PINK, 0.85f);
+                Vector2 center{targetTopLeft.x + cell * 0.5f, targetTopLeft.y + cell * 0.5f};
+                DrawRectangleRec(
+                    Rectangle{targetTopLeft.x + 1.0f, targetTopLeft.y + 1.0f, cell - 2.0f, cell - 2.0f},
+                    Fade(focus, 0.08f)
+                );
+                DrawRectangleLinesEx(
+                    Rectangle{targetTopLeft.x - 1.0f, targetTopLeft.y - 1.0f, cell + 2.0f, cell + 2.0f},
+                    1.8f,
+                    focus
+                );
+                DrawLineEx(
+                    {targetTopLeft.x + 4.0f, targetTopLeft.y + 4.0f},
+                    {targetTopLeft.x + cell - 4.0f, targetTopLeft.y + cell - 4.0f},
+                    2.0f,
+                    Fade(focus, 0.9f)
+                );
+                DrawLineEx(
+                    {targetTopLeft.x + cell - 4.0f, targetTopLeft.y + 4.0f},
+                    {targetTopLeft.x + 4.0f, targetTopLeft.y + cell - 4.0f},
+                    2.0f,
+                    Fade(focus, 0.9f)
+                );
+                DrawCircleLines(
+                    static_cast<int>(center.x),
+                    static_cast<int>(center.y),
+                    cell * 0.18f,
+                    Fade(WHITE, 0.55f)
+                );
+            }
+        }
+
+        if (player.tool == ToolType::Wall) {
+            Vec3i target = wallPlacementCell(player);
+            const bool onExteriorLane =
+                (player.id == 0 && player.position.x == world_.planetMin() - 1) ||
+                (player.id == 1 && player.position.x == world_.planetMax() + 1);
+            const bool isOwnFaceBlock =
+                (player.id == 0 && target.x == world_.planetMin()) ||
+                (player.id == 1 && target.x == world_.planetMax());
+            const bool canAttachToFace = onExteriorLane && isOwnFaceBlock;
+            if (world_.inBounds(target) && (world_.isAir(target) || canAttachToFace)) {
+                Vector2 targetTopLeft = cellTopLeft(target);
+                Color focus = player.id == 0 ? Fade(SKYBLUE, 0.75f) : Fade(PINK, 0.75f);
+                Rectangle ghostRect{targetTopLeft.x + 3.0f, targetTopLeft.y + 3.0f, cell - 6.0f, cell - 6.0f};
                 DrawRectangleLinesEx(
                     Rectangle{targetTopLeft.x - 1.0f, targetTopLeft.y - 1.0f, cell + 2.0f, cell + 2.0f},
                     2.0f,
                     focus
+                );
+                DrawRectangleRec(
+                    ghostRect,
+                    Fade(focus, 0.12f)
+                );
+                DrawRectangleLinesEx(ghostRect, 1.0f, Fade(WHITE, 0.45f));
+                DrawRectangleRec(
+                    Rectangle{ghostRect.x, ghostRect.y, ghostRect.width, 3.0f},
+                    Fade(WHITE, 0.12f)
                 );
             }
         }
@@ -953,10 +1104,14 @@ void Game::drawPlayers() const {
         Vector2 p{topLeft.x + cell * 0.5f, topLeft.y + cell * 0.5f};
         Color tint = player.id == 0 ? Color{108, 216, 255, 255} : Color{255, 142, 142, 255};
         float radius = std::max(5.0f, cell * 0.33f);
+        float pulse = 0.88f + 0.12f * std::sin(GetTime() * 4.6f + player.id * 1.4f);
+        DrawCircleV(p, radius * 2.4f, Fade(tint, 0.08f * pulse));
         DrawCircleV(p, radius * 1.8f, Fade(tint, 0.12f));
         DrawCircleV(p, radius, tint);
+        DrawCircleV({p.x, p.y + radius * 0.1f}, radius * 0.72f, scaleColor(tint, 0.86f));
         DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), radius, WHITE);
         DrawCircleV({p.x - radius * 0.25f, p.y - radius * 0.3f}, radius * 0.24f, Fade(WHITE, 0.55f));
+        DrawCircleV({p.x + radius * 0.16f, p.y + radius * 0.14f}, radius * 0.12f, Fade(BLACK, 0.18f));
     }
 }
 
@@ -974,9 +1129,11 @@ void Game::drawMissiles() const {
             };
             DrawCircleV(tail, 2.0f + trail, Fade(tint, 0.06f * trail));
         }
+        DrawCircleV(p, 20.0f, Fade(tint, 0.07f));
         DrawCircleV(p, 14.0f, Fade(tint, 0.12f));
         DrawCircleV(p, 6.5f, tint);
         DrawCircleV(p, 3.0f, WHITE);
+        DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), 8.5f, Fade(WHITE, 0.32f));
     }
 }
 
@@ -1061,6 +1218,7 @@ void Game::drawPreviewArc(const Player& player) const {
         float wobbleY = std::cos((i + 1) * 1.3f + player.id) * jitter;
         Vector2 p = worldPointToScreen(points[i]);
         Color c = player.id == 0 ? Fade(SKYBLUE, alpha) : Fade(PINK, alpha);
+        DrawCircleV({p.x + wobbleX, p.y + wobbleY}, 5.2f - t * 2.1f, Fade(c, 0.20f));
         DrawCircleV({p.x + wobbleX, p.y + wobbleY}, 3.5f - t * 1.5f, c);
     }
 }

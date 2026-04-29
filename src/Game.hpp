@@ -27,6 +27,7 @@ private:
 
     Vec3i buildCellForPlayer(const Player& player) const;
     Vec3i frontCell(const Player& player) const;
+    Vec3i wallPlacementCell(const Player& player) const;
     float mineTimeForBlock(BlockType type) const;
     bool collectBlockResource(Player& player, BlockType type);
     bool spend(Player& player, int fuelCost, int metalCost);
